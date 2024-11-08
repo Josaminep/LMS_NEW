@@ -127,9 +127,17 @@ if (isset($_GET['delete_module_id'])) {
 
     // Delete the module from the database
     $delete_stmt = $pdo->prepare("DELETE FROM modules WHERE id = ?");
-    $delete_stmt->execute([$module_id]);
-    echo "<script>alert('Module deleted successfully!');</script>";
+    if ($delete_stmt->execute([$module_id])) {
+        echo "<script>alert('Module deleted successfully!');</script>";
+    } else {
+        echo "<script>alert('Error deleting module.');</script>";
+    }
+    
+    // Redirect to avoid form resubmission prompt
+    header("Location: edit_course.php?course_id=$course_id");
+    exit();
 }
+
 
 // Fetch modules associated with the course
 $modules = $pdo->prepare("SELECT * FROM modules WHERE course_id = ?");
@@ -190,32 +198,35 @@ $uploaded_modules = $modules->fetchAll(PDO::FETCH_ASSOC);
         </form>
 
         <div class="uploaded-files">
-            <h3>Uploaded Modules</h3>
-            <ul>
-                <?php foreach ($uploaded_modules as $module): ?>
-                    <?php if (!empty($module['module_file'])): ?>
-                        <li>
-                            <a href="<?php echo htmlspecialchars($module['module_file']); ?>" target="_blank">
-                                <?php echo htmlspecialchars($module['title']); ?> (PDF)
-                            </a>
-                            <form action="edit_course.php?delete_module_id=<?php echo $module['id']; ?>" method="post" style="display:inline;">
-                                <button class="delete-btn" type="submit">Delete</button>
-                            </form>
-                        </li>
-                    <?php endif; ?>
-                    <?php if (!empty($module['video_file'])): ?>
-                        <li>
-                            <a href="<?php echo htmlspecialchars($module['video_file']); ?>" target="_blank">
-                                <?php echo htmlspecialchars($module['title']); ?> (Video)
-                            </a>
-                            <form action="edit_course.php?delete_module_id=<?php echo $module['id']; ?>" method="post" style="display:inline;">
-                                <button class="delete-btn" type="submit">Delete</button>
-                            </form>
-                        </li>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </ul>
-        </div>
+    <h3>Uploaded Modules</h3>
+    <ul>
+        <?php foreach ($uploaded_modules as $module): ?>
+            <?php if (!empty($module['module_file'])): ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($module['module_file']); ?>" target="_blank">
+                        <?php echo htmlspecialchars($module['title']); ?> (PDF)
+                    </a>
+                    <!-- Include course_id in the delete form action URL -->
+                    <form action="edit_course.php?course_id=<?php echo $course_id; ?>&delete_module_id=<?php echo $module['id']; ?>" method="post" style="display:inline;">
+                        <button class="delete-btn" type="submit">Delete</button>
+                    </form>
+                </li>
+            <?php endif; ?>
+            <?php if (!empty($module['video_file'])): ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($module['video_file']); ?>" target="_blank">
+                        <?php echo htmlspecialchars($module['title']); ?> (Video)
+                    </a>
+                    <!-- Include course_id in the delete form action URL -->
+                    <form action="edit_course.php?course_id=<?php echo $course_id; ?>&delete_module_id=<?php echo $module['id']; ?>" method="post" style="display:inline;">
+                        <button class="delete-btn" type="submit">Delete</button>
+                    </form>
+                </li>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </ul>
+</div>
+
 
         <div class="enrolled-students">
             <h3>Enrolled Students</h3>
