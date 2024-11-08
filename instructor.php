@@ -37,18 +37,21 @@ foreach ($courses as $course) {
 
 // Handle sending assessment
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['send_assessment'])) {
-  $course_id = $_POST['course_id'];
-  $assessment_title = htmlspecialchars($_POST['assessment_title']);
-  $assessment_description = htmlspecialchars($_POST['assessment_description']);
+    $course_id = $_POST['course_id'];
+    $assessment_title = htmlspecialchars($_POST['assessment_title']);
+    $assessment_description = htmlspecialchars($_POST['assessment_description']);
 
-  // Save the assessment to the database
-  $insert_assessment = $pdo->prepare("INSERT INTO assessments (course_id, instructor_id, assessment_title, assessment_description, created_at) 
-                                       VALUES (?, ?, ?, ?, NOW())");
-  $insert_assessment->execute([$course_id, $instructor_id, $assessment_title, $assessment_description]);
+    // Save the assessment to the database
+    $insert_assessment = $pdo->prepare("INSERT INTO assessments (course_id, instructor_id, assessment_title, assessment_description, created_at) 
+                                         VALUES (?, ?, ?, ?, NOW())");
+    $insert_assessment->execute([$course_id, $instructor_id, $assessment_title, $assessment_description]);
 
-  // Redirect to the same page (GET request)
-  header("Location: " . $_SERVER['PHP_SELF'] . "?course_id=" . urlencode($course_id));
-  exit; // Important to stop further execution
+    // Set success message in session
+    $_SESSION['successMessage'] = "Assessment sent successfully!";
+    
+    // Redirect to avoid form resubmission
+    header("Location: " . $_SERVER['PHP_SELF'] . "?course_id=" . urlencode($course_id));
+    exit;
 }
 
 
@@ -418,31 +421,125 @@ input[type="submit"]:hover {
 
 <div id="evaluate" class="tab-content hidden">
     <h3>Evaluate</h3>
-    <div class="modules">
-                        <!---<h4>Course Content:</h4>
-                        <?php
-                        if (!empty($modules_by_course[$course['id']])) {
-                            foreach ($modules_by_course[$course['id']] as $module): ?>
-                                <div class="module"><?php echo htmlspecialchars($module['title']); ?></div>
-                            <?php endforeach; ?>
-                        <?php } else { ?>
-                            <div class='module'>No content available for this course.</div>
-                        <?php } ?>
-                    </div>-->
 
-                    <div class="assessment-form">
-    <h4>Send Assessment:</h4>
-    <form method="POST" action="">
-        <input type="hidden" name="course_id" value="<?php echo htmlspecialchars($course['id']); ?>">
-        <label for="assessment_title">Assessment Title:</label>
-        <input type="text" id="assessment_title" name="assessment_title" required>
-        
-        <label for="assessment_description">Assessment Description:</label>
-        <textarea id="assessment_description" name="assessment_description" rows="4" required></textarea>
-        
-        <input type="submit" name="send_assessment" value="Send Assessment">
-    </form>
+    <!-- Display success message if assessment was sent -->
+    <?php if (isset($_SESSION['successMessage'])): ?>
+        <div class="success-message" style="color: green;">
+            <?php echo htmlspecialchars($_SESSION['successMessage']); ?>
+        </div>
+        <?php unset($_SESSION['successMessage']); // Clear message after displaying ?>
+    <?php endif; ?>
+
+    <div class="assessment-form">
+        <h4>Send Assessment:</h4>
+        <form method="POST" action="">
+            <input type="hidden" name="course_id" value="<?php echo htmlspecialchars($course['id']); ?>">
+            <label for="assessment_title">Assessment Title:</label>
+            <input type="text" id="assessment_title" name="assessment_title" required>
+            
+            <label for="assessment_description">Assessment Description:</label>
+            <textarea id="assessment_description" name="assessment_description" rows="4" required></textarea>
+            
+            <input type="submit" name="send_assessment" value="Send Assessment">
+        </form>
+    </div>
+
+    <!-- Button to open the modal for sent assessments -->
+    <button id="show-assessments-btn" onclick="openModal()">Show Sent Assessments</button>
+
+    <!-- Modal for displaying sent assessments -->
+    <div id="sent-assessments-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h4>Sent Assessments:</h4>
+            <?php
+            // Fetch assessments from the database for this course and instructor
+            $fetch_assessments = $pdo->prepare("SELECT assessment_title, assessment_description, created_at FROM assessments WHERE course_id = ? AND instructor_id = ?");
+            $fetch_assessments->execute([$course['id'], $instructor_id]);
+            $assessments = $fetch_assessments->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($assessments)): ?>
+                <ul>
+                    <?php foreach ($assessments as $assessment): ?>
+                        <li>
+                            <strong><?php echo htmlspecialchars($assessment['assessment_title']); ?></strong><br>
+                            <?php echo nl2br(htmlspecialchars($assessment['assessment_description'])); ?><br>
+                            <small>Sent on: <?php echo date('F d, Y', strtotime($assessment['created_at'])); ?></small>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p>No assessments have been sent for this course yet.</p>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
+
+<!-- Modal styling -->
+<style>
+    /* Modal container */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5); /* Background with opacity */
+    }
+
+    /* Modal content box */
+    .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 8px;
+    }
+
+    /* Close button styling */
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<!-- JavaScript for modal functionality -->
+<script>
+    // Open modal function
+    function openModal() {
+        document.getElementById("sent-assessments-modal").style.display = "block";
+    }
+
+    // Close modal function
+    function closeModal() {
+        document.getElementById("sent-assessments-modal").style.display = "none";
+    }
+
+    // Close the modal when clicking outside of it
+    window.onclick = function(event) {
+        const modal = document.getElementById("sent-assessments-modal");
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
+
+
 
 <div class="submissions">
     <h4>Assessment Submissions:</h4>
