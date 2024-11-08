@@ -757,11 +757,11 @@ if (isset($_GET['status'])) {
                         </td>
                         <td>
                             <?php if ($student['approved'] == 0): ?>
-                                <!-- Approve button link -->
-                                <a href="approve.php?id=<?php echo $student['id']; ?>&action=approve" class="approve-btn">Approve</a>
+                            <!-- Approve button link -->
+                            <a href="approve.php?id=<?php echo $student['id']; ?>&action=approve" class="approve-btn" style="display: inline-block; padding: 10px 20px; margin: 5px; border-radius: 5px; background-color: #4CAF50; color: white; border: 1px solid #4CAF50; font-weight: bold; text-decoration: none; transition: background-color 0.3s ease, transform 0.3s ease;" onmouseover="this.style.backgroundColor='#45a049'; this.style.transform='scale(1.05)';" onmouseout="this.style.backgroundColor='#4CAF50'; this.style.transform='scale(1)';">Approve</a>
                             <?php else: ?>
                                 <!-- Deny button link -->
-                                <a href="approve.php?id=<?php echo $student['id']; ?>&action=deny" class="deny-btn">Deny</a>
+                                <a href="approve.php?id=<?php echo $student['id']; ?>&action=deny" class="deny-btn" style="display: inline-block; padding: 10px 20px; margin: 5px; border-radius: 5px; background-color: #f44336; color: white; border: 1px solid #f44336; font-weight: bold; text-decoration: none; transition: background-color 0.3s ease, transform 0.3s ease;" onmouseover="this.style.backgroundColor='#e53935'; this.style.transform='scale(1.05)';" onmouseout="this.style.backgroundColor='#f44336'; this.style.transform='scale(1)';">Deny</a>
                             <?php endif; ?>
                         </td>
                     </tr>
