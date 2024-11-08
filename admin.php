@@ -35,8 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_course'])) {
     $course_description = $_POST['new_course_description'];
     $instructor_id = $_POST['instructor_id'];
 
-// Check if the form has been submitted already
-if (!isset($_SESSION['course_created'])) {
     // Handle file upload for course image
     $course_image = null;
     if (isset($_FILES['new_course_image']) && $_FILES['new_course_image']['error'] == UPLOAD_ERR_OK) {
@@ -52,13 +50,9 @@ if (!isset($_SESSION['course_created'])) {
     $stmt = $pdo->prepare("INSERT INTO courses (course_name, course_description, course_image, instructor_id) VALUES (?, ?, ?, ?)");
     if ($stmt->execute([$course_name, $course_description, $course_image, $instructor_id])) {
         echo "<p>Course created successfully!</p>";
-        $_SESSION['course_created'] = true; // Set session variable to prevent re-submission
     } else {
         echo "<p>Error creating course.</p>";
     }
-} else {
-    echo "<p>This course has already been created.</p>"; // Prevent re-creation
-}
 }
 
 // Handle course deletion
@@ -100,7 +94,6 @@ $students = $pdo->query("SELECT * FROM students")->fetchAll(PDO::FETCH_ASSOC);
 $total_courses = count($courses);
 $total_instructors = count($instructors);
 $total_students = count($students);
-
 // Initialize variables for filtered results
 $filtered_instructors = $instructors; // Default to all instructors
 $filtered_students = $students; // Default to all students
@@ -109,20 +102,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_instructor'])
     $instructor_name = $_POST['instructor_name'];
     $instructor_email = $_POST['instructor_email'];
     $instructor_password = $_POST['instructor_password'];
+    $instructor_gender = $_POST['instructor_gender']; // Get the gender value from the form
 
-    // Hash the password before storing it
-    $hashed_password = password_hash($instructor_password, PASSWORD_DEFAULT);
+    // Check if email already exists
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM instructors WHERE email = ?");
+    $stmt->execute([$instructor_email]);
+    $email_exists = $stmt->fetchColumn();
 
-    // Insert new instructor into the database
-    $stmt = $pdo->prepare("INSERT INTO instructors (name, email, password) VALUES (?, ?, ?)");
-    if ($stmt->execute([$instructor_name, $instructor_email, $hashed_password])) {
-        echo "<p>Instructor registered successfully!</p>";
+    if ($email_exists) {
+        // Email already exists, show alert
+        echo "<script type='text/javascript'>
+                alert('The email is already registered. Please use a different email.');
+                window.location.href = 'admin.php';  // Redirect to the registration page to correct the email
+              </script>";
     } else {
-        echo "<p>Error registering instructor.</p>";
+        // Hash the password before storing it
+        $hashed_password = password_hash($instructor_password, PASSWORD_DEFAULT);
+
+        // Insert new instructor into the database (including gender)
+        $stmt = $pdo->prepare("INSERT INTO instructors (name, email, password, gender) VALUES (?, ?, ?, ?)");
+        if ($stmt->execute([$instructor_name, $instructor_email, $hashed_password, $instructor_gender])) {
+            // Alert message on successful registration
+            echo "<script type='text/javascript'>
+                    alert('Instructor registered successfully!');
+                    window.location.href = 'admin.php';  // Optional: Redirect after success
+                  </script>";
+        } else {
+            echo "<p>Error registering instructor.</p>";
+        }
     }
 }
-?>
 
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -432,12 +443,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_instructor'])
         </section>
 
         <section id="instructors" class="tab-content">
-    <h2>Instructors</h2>
+    <div class="header">
+        <h2>Instructors</h2>
+    </div>
+
+                                    <!-- Refresh Button with Class for Smaller Size -->
+        <button onclick="window.location.reload();" class="btn-refresh">🔄 Refresh</button>
+
     <div class="instructor-list">
         <table>
             <thead>
                 <tr>
                     <th>Instructor Name</th>
+                    <th>Gender</th>
                     <th>Email</th>
                     <th>Assigned Course</th>
                     <th>Actions</th>
@@ -447,6 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_instructor'])
                 <?php foreach ($instructors as $instructor): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($instructor['name']); ?></td>
+                        <td><?php echo htmlspecialchars($instructor['gender']); ?></td>
                         <td><?php echo htmlspecialchars($instructor['email']); ?></td>
                         <td>
                             <?php
@@ -457,8 +476,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_instructor'])
                             ?>
                         </td>
                         <td>
-                            <!-- Edit Instructor Button -->
-                            <button onclick="openEditModal(<?php echo $instructor['id']; ?>)">Edit</button>
+                            <!-- Edit Instructor Button to open modal -->
+                            <button onclick="openEditModal('<?php echo $instructor['id']; ?>', '<?php echo htmlspecialchars($instructor['name']); ?>', '<?php echo htmlspecialchars($instructor['email']); ?>', '<?php echo htmlspecialchars($instructor['gender']); ?>')" class="btn-edit">Edit</button>
                             
                             <!-- Delete Instructor Button -->
                             <form method="POST" action="delete_instructor.php" style="display:inline;">
@@ -471,40 +490,221 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register_instructor'])
             </tbody>
         </table>
     </div>
+</section>
 
-    <!-- Modal for editing an instructor -->
-    <div id="editInstructorModal" style="display:none;">
-        <form method="POST" action="edit_instructor.php">
+<style>
+    /* Styling for the header containing the title and refresh button */
+    /* Styling for the refresh button */
+    .btn-refresh {
+        font-size: 14px;
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #002193;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        width: 10%;
+        margin-right: 10px;
+    }
+
+    .btn-refresh:hover {
+        background-color: #e0e0e0;
+    }
+</style>
+
+
+<!-- Modal for editing an instructor -->
+<div id="editInstructorModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Edit Instructor</h2>
+        
+        <!-- Form content -->
+        <form method="POST" action="edit_instructor.php" enctype="multipart/form-data">
             <input type="hidden" name="instructor_id" id="edit_instructor_id">
+            
             <label for="edit_instructor_name">Instructor Name</label>
             <input type="text" id="edit_instructor_name" name="instructor_name" required>
             
             <label for="edit_instructor_email">Email</label>
             <input type="email" id="edit_instructor_email" name="instructor_email" required>
-
+            
+            <label for="edit_instructor_gender">Gender</label>
+            <select id="edit_instructor_gender" name="instructor_gender" required>
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+            
             <label for="course_assignment">Assign Course</label>
             <select id="course_assignment" name="course_id">
                 <option value="">Select a course</option>
-                <?php foreach ($courses as $course): ?>
-                    <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['course_name']); ?></option>
+                <?php
+                    // Assuming you have a $courses array containing courses
+                    foreach ($courses as $course): ?>
+                        <option value="<?php echo $course['id']; ?>"><?php echo htmlspecialchars($course['course_name']); ?></option>
                 <?php endforeach; ?>
             </select>
+            
+            <label for="instructor_profile_picture">Profile Picture</label>
+            <input type="file" id="instructor_profile_picture" name="instructor_profile_picture">
+            
             <button type="submit">Update Instructor</button>
         </form>
     </div>
-</section>
+</div>
 
+
+
+<!-- JavaScript for Modal -->
 <script>
-    function openEditModal(instructorId) {
-        // Fetch instructor data using AJAX or any other preferred method
-        // Then populate the form with instructor data
+    // Open the modal and populate it with the instructor's data
+    function openEditModal(id, name, email, gender) {
+        document.getElementById('edit_instructor_id').value = id;
+        document.getElementById('edit_instructor_name').value = name;
+        document.getElementById('edit_instructor_email').value = email;
+        document.getElementById('edit_instructor_gender').value = gender;
         document.getElementById('editInstructorModal').style.display = 'block';
-        document.getElementById('edit_instructor_id').value = instructorId;
-
-        // You should also populate instructor's current details (name, email, course) here
-        // If needed, make an AJAX request to fetch instructor data
     }
+
+    // Close the modal
+    function closeModal() {
+        document.getElementById('editInstructorModal').style.display = 'none';
+    }
+
+    // Close the modal if user clicks outside of it
+    window.onclick = function(event) {
+        if (event.target === document.getElementById('editInstructorModal')) {
+            closeModal();
+        }
+    };
+    // Get the modal and header for dragging
+var modal = document.getElementById("editInstructorModal");
+var header = document.querySelector(".modal-header");
+
+// Variables to store the position of the modal
+var offsetX, offsetY, isDragging = false;
+
+// When the user presses down on the modal header, start dragging
+header.onmousedown = function(e) {
+    isDragging = true;
+    offsetX = e.clientX - modal.offsetLeft;
+    offsetY = e.clientY - modal.offsetTop;
+    
+    // Prevent selection while dragging
+    document.onselectstart = function() { return false; };
+}
+
+// When the user moves the mouse, move the modal if dragging
+document.onmousemove = function(e) {
+    if (isDragging) {
+        modal.style.left = e.clientX - offsetX + "px";
+        modal.style.top = e.clientY - offsetY + "px";
+    }
+}
+
+// When the user releases the mouse, stop dragging
+document.onmouseup = function() {
+    isDragging = false;
+    document.onselectstart = null;
+}
+
+// Close Modal Function
+function closeModal() {
+    modal.style.display = "none";
+}
+
 </script>
+
+<!-- CSS for styling the modal -->
+<style>
+/* Modal container */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 10%;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Modal content box */
+.modal-content {
+    background-color: #fefefe;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 8px;
+    position: relative; /* Needed for absolute positioning of draggable area */
+}
+
+/* Draggable title bar */
+.modal-header {
+    cursor: move; /* Show a move cursor to indicate it's draggable */
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    font-size: 20px;
+}
+
+/* Close button style */
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+/* Heading inside the modal */
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Label style */
+label {
+    font-weight: bold;
+    margin-top: 10px;
+    display: block;
+}
+
+/* Input, select, and button style */
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Button style */
+button {
+    background-color: #4CAF50;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    width: 40%;
+    margin: 10px auto;
+}
+
+/* Button hover effect */
+button:hover {
+    background-color: #45a049;
+}
+</style>
+
 
 
 <?php
@@ -579,11 +779,19 @@ if (isset($_GET['status'])) {
             <input type="text" name="instructor_name" placeholder="Instructor Name" required>
             <input type="email" name="instructor_email" placeholder="Instructor Email" required>
             <input type="password" name="instructor_password" placeholder="Instructor Password" required>
+            
+            <!-- Gender dropdown -->
+            <select name="instructor_gender" required>
+                <option value="" disabled selected>Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <!-- Add other options if your enum allows more values -->
+            </select>
+
             <button type="submit" name="register_instructor">Register Instructor</button>
         </form>
     </div>
 </section>
-
 
 
     <script>

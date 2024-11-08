@@ -11,12 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['instructor_id'])) {
         // Now delete the instructor from the instructors table
         $stmt = $pdo->prepare("DELETE FROM instructors WHERE id = ?");
         if ($stmt->execute([$instructor_id])) {
-            echo "<p>Instructor deleted successfully!</p>";
+            echo "<script>alert('Instructor deleted successfully!'); window.location.href = window.location.href;</script>";
         } else {
-            echo "<p>Error deleting instructor.</p>";
+            echo "<script>alert('Error deleting instructor.'); window.location.href = window.location.href;</script>";
         }
     } else {
-        echo "<p>Error unassigning instructor from course.</p>";
+        echo "<script>alert('Error unassigning instructor from course.'); window.location.href = window.location.href;</script>";
     }
 }
 ?>
