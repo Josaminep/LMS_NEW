@@ -405,7 +405,7 @@ input[type="submit"]:hover {
                     if (!empty($students_by_course[$course['id']])) {
                         foreach ($students_by_course[$course['id']] as $student): ?>
                             <div class="student"><?php echo htmlspecialchars($student['name']); ?></div>
-                        <?php endforeach; 
+                        <?php endforeach;
                     } else { ?>
                         <div class="student">No students enrolled in this course.</div>
                     <?php } ?>
@@ -417,8 +417,6 @@ input[type="submit"]:hover {
     <?php endif; ?>
 </div>
 
-</div>
-
 <div id="evaluate" class="tab-content hidden">
     <h3>Evaluate</h3>
 
@@ -427,59 +425,60 @@ input[type="submit"]:hover {
         <div class="success-message" style="color: green;">
             <?php echo htmlspecialchars($_SESSION['successMessage']); ?>
         </div>
-        <?php unset($_SESSION['successMessage']); // Clear message after displaying ?>
+        <?php unset($_SESSION['successMessage']); ?>
     <?php endif; ?>
 
-    <div class="assessment-form">
-        <h4>Send Assessment:</h4>
-        <form method="POST" action="">
-            <input type="hidden" name="course_id" value="<?php echo htmlspecialchars($course['id']); ?>">
-            <label for="assessment_title">Assessment Title:</label>
-            <input type="text" id="assessment_title" name="assessment_title" required>
-            
-            <label for="assessment_description">Assessment Description:</label>
-            <textarea id="assessment_description" name="assessment_description" rows="4" required></textarea>
-            
-            <input type="submit" name="send_assessment" value="Send Assessment">
-        </form>
-    </div>
+<!-- Assessment form (initially hidden) -->
+<div class="assessment-form" id="assessment-form" style="display: none;">
+    <h4>Send Assessment:</h4>
+    <form method="POST" action="">
+        <input type="hidden" name="course_id" value="<?php echo htmlspecialchars($course['id']); ?>">
+        <label for="assessment_title">Assessment Title:</label>
+        <input type="text" id="assessment_title" name="assessment_title" required>
+        
+        <label for="assessment_description">Assessment Description:</label>
+        <textarea id="assessment_description" name="assessment_description" rows="4" required></textarea>
+        
+        <input type="submit" name="send_assessment" value="Send Assessment">
+    </form>
+</div>
 
-    <!-- Button to open the modal for sent assessments -->
-    <button id="show-assessments-btn" onclick="openModal()">Show Sent Assessments</button>
+<!-- Button to toggle the assessment form visibility -->
+<button id="toggle-assessment-form-btn" onclick="toggleAssessmentForm()">Send Assessment</button>
 
-    <!-- Modal for displaying sent assessments -->
-    <div id="sent-assessments-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h4>Sent Assessments:</h4>
-            <?php
-            // Fetch assessments from the database for this course and instructor
-            $fetch_assessments = $pdo->prepare("SELECT assessment_title, assessment_description, created_at FROM assessments WHERE course_id = ? AND instructor_id = ?");
-            $fetch_assessments->execute([$course['id'], $instructor_id]);
-            $assessments = $fetch_assessments->fetchAll(PDO::FETCH_ASSOC);
+<!-- Show Sent Assessments Button -->
+<button id="show-assessments-btn" onclick="openModal()">Show Sent Assessments</button>
 
-            if (!empty($assessments)): ?>
-                <ul>
-                    <?php foreach ($assessments as $assessment): ?>
-                        <li>
-                            <strong><?php echo htmlspecialchars($assessment['assessment_title']); ?></strong><br>
-                            <?php echo nl2br(htmlspecialchars($assessment['assessment_description'])); ?><br>
-                            <small>Sent on: <?php echo date('F d, Y', strtotime($assessment['created_at'])); ?></small>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php else: ?>
-                <p>No assessments have been sent for this course yet.</p>
-            <?php endif; ?>
-        </div>
+<!-- Modal for displaying sent assessments -->
+<div id="sent-assessments-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h4>Sent Assessments:</h4>
+        <?php
+        $fetch_assessments = $pdo->prepare("SELECT assessment_title, assessment_description, created_at FROM assessments WHERE course_id = ? AND instructor_id = ?");
+        $fetch_assessments->execute([$course['id'], $instructor_id]);
+        $assessments = $fetch_assessments->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($assessments)): ?>
+            <ul>
+                <?php foreach ($assessments as $assessment): ?>
+                    <li>
+                        <strong><?php echo htmlspecialchars($assessment['assessment_title']); ?></strong><br>
+                        <?php echo nl2br(htmlspecialchars($assessment['assessment_description'])); ?><br>
+                        <small>Sent on: <?php echo date('F d, Y', strtotime($assessment['created_at'])); ?></small>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>No assessments have been sent for this course yet.</p>
+        <?php endif; ?>
     </div>
 </div>
 
 <!-- Modal styling -->
 <style>
-    /* Modal container */
     .modal {
-        display: none; /* Hidden by default */
+        display: none;
         position: fixed;
         z-index: 1;
         left: 0;
@@ -487,10 +486,9 @@ input[type="submit"]:hover {
         width: 100%;
         height: 100%;
         overflow: auto;
-        background-color: rgba(0, 0, 0, 0.5); /* Background with opacity */
+        background-color: rgba(0, 0, 0, 0.5);
     }
 
-    /* Modal content box */
     .modal-content {
         background-color: #fefefe;
         margin: 10% auto;
@@ -501,7 +499,6 @@ input[type="submit"]:hover {
         border-radius: 8px;
     }
 
-    /* Close button styling */
     .close {
         color: #aaa;
         float: right;
@@ -518,19 +515,29 @@ input[type="submit"]:hover {
     }
 </style>
 
-<!-- JavaScript for modal functionality -->
+<!-- JavaScript to toggle the form visibility and modal functionality -->
 <script>
-    // Open modal function
+    // Toggle visibility of the assessment form
+    function toggleAssessmentForm() {
+        const form = document.getElementById("assessment-form");
+        if (form.style.display === "none" || form.style.display === "") {
+            form.style.display = "block"; // Show form
+        } else {
+            form.style.display = "none"; // Hide form
+        }
+    }
+
+    // Open modal for showing sent assessments
     function openModal() {
         document.getElementById("sent-assessments-modal").style.display = "block";
     }
 
-    // Close modal function
+    // Close modal
     function closeModal() {
         document.getElementById("sent-assessments-modal").style.display = "none";
     }
 
-    // Close the modal when clicking outside of it
+    // Close modal when clicking outside of it
     window.onclick = function(event) {
         const modal = document.getElementById("sent-assessments-modal");
         if (event.target === modal) {
@@ -540,99 +547,88 @@ input[type="submit"]:hover {
 </script>
 
 
+    <div class="submissions">
+        <h4>Assessment Submissions:</h4>
+        <?php if (empty($course['id'])): ?>
+            <p>No course assigned for you</p>
+        <?php elseif (!empty($feedback_by_submission[$course['id']])): ?>
+            <?php foreach ($feedback_by_submission[$course['id']] as $submission): ?>
+                <div class="submission">
+                    <h5>Submission by: <?php echo htmlspecialchars($submission['student_name']); ?></h5>
+                    <h5>Submitted Assessment: <?php echo htmlspecialchars($submission['submission_text']); ?></h5>
 
-<div class="submissions">
-    <h4>Assessment Submissions:</h4>
-    <?php if (empty($course['id'])): ?>
-        <p>No course assigned for you</p>
-    <?php elseif (!empty($feedback_by_submission[$course['id']])): ?>
-        <?php foreach ($feedback_by_submission[$course['id']] as $submission): ?>
-            <div class="submission">
-                <h5>Submission by: <?php echo htmlspecialchars($submission['student_name']); ?></h5>
-                <br>
-                <h5>Submitted Assessment: <?php echo htmlspecialchars($submission['submission_text']); ?></h5>
+                    <?php
+                    $feedback_check = $pdo->prepare("SELECT * FROM assessment_feedback WHERE submission_id = ? AND user_id = ? AND user_type = 'instructor'");
+                    $feedback_check->execute([$submission['submission_id'], $_SESSION['user_id']]);
+                    $existing_feedback = $feedback_check->fetch(PDO::FETCH_ASSOC);
 
-                <?php
-                // Check if feedback has already been submitted for this submission
-                $feedback_check = $pdo->prepare("
-                    SELECT * FROM assessment_feedback 
-                    WHERE submission_id = ? AND user_id = ? AND user_type = 'instructor'
-                ");
-                $feedback_check->execute([$submission['submission_id'], $_SESSION['user_id']]);
-                $existing_feedback = $feedback_check->fetch(PDO::FETCH_ASSOC);
+                    if ($existing_feedback): ?>
+                        <div class="existing-feedback">
+                            <strong>Your Feedback:</strong>
+                            <h5><?php echo nl2br(htmlspecialchars($existing_feedback['comment'])); ?></h5>
+                            <p>Submitted on: <?php echo date('F d, Y', strtotime($existing_feedback['created_at'])); ?></p>
+                        </div>
+                    <?php else: ?>
+                        <form method="POST" action="">
+                            <input type="hidden" name="submission_id" value="<?php echo htmlspecialchars($submission['submission_id']); ?>">
+                            <label for="feedback_text_<?php echo $submission['submission_id']; ?>">Feedback:</label>
+                            <textarea id="feedback_text_<?php echo $submission['submission_id']; ?>" name="feedback_text" rows="3" required></textarea>
+                            <input type="submit" name="submit_feedback" value="Submit Feedback">
+                        </form>
+                    <?php endif; ?>
 
-                if ($existing_feedback): ?>
-                    <div class="existing-feedback">
-                        <strong>Your Feedback:</strong>
-                        <h5><?php echo nl2br(htmlspecialchars($existing_feedback['comment'])); ?></h5>
-                        <p>Submitted on: <?php echo date('F d, Y', strtotime($existing_feedback['created_at'])); ?></p>
-                    </div>
-                <?php else: ?>
-                    <form method="POST" action="">
-                        <input type="hidden" name="submission_id" value="<?php echo htmlspecialchars($submission['submission_id']); ?>">
-                        <label for="feedback_text_<?php echo $submission['submission_id']; ?>">Feedback:</label>
-                        <textarea id="feedback_text_<?php echo $submission['submission_id']; ?>" name="feedback_text" rows="3" required></textarea>
-                        <input type="submit" name="submit_feedback" value="Submit Feedback">
-                    </form>
-                <?php endif; ?>
+                    <?php
+                    $comments_query = $pdo->prepare("SELECT * FROM comments WHERE post_id = ?");
+                    $comments_query->execute([$submission['submission_id']]);
+                    $comments = $comments_query->fetchAll(PDO::FETCH_ASSOC);
+                    ?>
 
-                <!-- Fetch and display student comments -->
-                <?php
-                // Use the correct value for post_id (submission_id)
-                $comments_query = $pdo->prepare("SELECT * FROM comments WHERE post_id = ?");
-                $comments_query->execute([$submission['submission_id']]);
-                $comments = $comments_query->fetchAll(PDO::FETCH_ASSOC);
-                ?>
+                    <?php if (!empty($comments)): ?>
+                        <div class="student-comments">
+                            <p style="color: green;">Student Comments</p>
+                            <?php foreach ($comments as $comment): ?>
+                                <div class="comment">
+                                    <p><strong>Comment:</strong></p><h5><?php echo nl2br(htmlspecialchars($comment['content'])); ?></h5>
+                                    <p>Posted on: <?php echo date('F d, Y', strtotime($comment['created_at'])); ?></p>
 
-                <?php if (!empty($comments)): ?>
-                    <div class="student-comments">
-                        <p style="color: green;">Student Comments</p>
-                        <?php foreach ($comments as $comment): ?>
-                            <div class="comment">
-                                <p><strong>Comment:</strong></p><h5><?php echo nl2br(htmlspecialchars($comment['content'])); ?></h5>
-                                <p>Posted on: <?php echo date('F d, Y', strtotime($comment['created_at'])); ?></p>
+                                    <?php
+                                    $replies_query = $pdo->prepare("SELECT * FROM replies WHERE comment_id = ?");
+                                    $replies_query->execute([$comment['comment_id']]);
+                                    $replies = $replies_query->fetchAll(PDO::FETCH_ASSOC);
+                                    ?>
 
-                                <!-- Fetch and display replies -->
-                                <?php
-                                $replies_query = $pdo->prepare("SELECT * FROM replies WHERE comment_id = ?");
-                                $replies_query->execute([$comment['comment_id']]);
-                                $replies = $replies_query->fetchAll(PDO::FETCH_ASSOC);
-                                ?>
-                                
-                                <?php if (!empty($replies)): ?>
-                                    <div class="replies">
-                                        <p style="color: blue;">Your Replies</p>
-                                        <?php foreach ($replies as $reply): ?>
-                                            <div class="reply">
-                                                <p><strong>Reply:</strong></p>
-                                                <h5><?php echo nl2br(htmlspecialchars($reply['reply_content'])); ?></h5>
-                                                <p>Posted on: <?php echo date('F d, Y', strtotime($reply['created_at'])); ?></p>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
+                                    <?php if (!empty($replies)): ?>
+                                        <div class="replies">
+                                            <p style="color: blue;">Your Replies</p>
+                                            <?php foreach ($replies as $reply): ?>
+                                                <div class="reply">
+                                                    <p><strong>Reply:</strong></p>
+                                                    <h5><?php echo nl2br(htmlspecialchars($reply['reply_content'])); ?></h5>
+                                                    <p>Posted on: <?php echo date('F d, Y', strtotime($reply['created_at'])); ?></p>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
 
-                                <!-- Reply form for instructor -->
-                                <form method="POST" action="reply.php">
-                                    <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id']); ?>">
-                                    <label for="reply_text_<?php echo htmlspecialchars($comment['comment_id']); ?>">Reply:</label>
-                                    <textarea id="reply_text_<?php echo htmlspecialchars($comment['comment_id']); ?>" name="reply_text" rows="2" required></textarea>
-                                    <input type="submit" name="submit_reply" value="Reply">
-                                </form>
-                            </div>
-                            
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <p>No comments for this submission.</p>
-                <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class='submission'>No submissions available for this assessment.</div>
-    <?php endif; ?>
+                                    <form method="POST" action="reply.php">
+                                        <input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($comment['comment_id']); ?>">
+                                        <label for="reply_text_<?php echo htmlspecialchars($comment['comment_id']); ?>">Reply:</label>
+                                        <textarea id="reply_text_<?php echo htmlspecialchars($comment['comment_id']); ?>" name="reply_text" rows="2" required></textarea>
+                                        <input type="submit" name="submit_reply" value="Reply">
+                                    </form>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p>No comments for this submission.</p>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class='submission'>No submissions available for this assessment.</div>
+        <?php endif; ?>
+    </div>
 </div>
-
 
 
 
